@@ -1,0 +1,5 @@
+feeds:
+  - name: HotNews Romania
+    url: https://www.hotnews.ro/rss
+  - name: Reuters World
+    url: https://feeds.reuters.com/Reuters/worldNews
