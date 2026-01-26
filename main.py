@@ -37,7 +37,14 @@ def main():
     for feed in cfg["feeds"]:
         msg += f"• {feed['name']}\n"
         for e in fetch(feed["url"], limit=5):
-            msg += f"  - {e.title}\n"
+            link = getattr(e, "link", "").strip()
+title = getattr(e, "title", "").strip()
+
+if title:
+    msg += f"  - {title}\n"
+    if link:
+        msg += f"    🔗 {link}\n"
+
         msg += "\n"
 
     send_telegram(msg)
