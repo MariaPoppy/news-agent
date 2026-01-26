@@ -1,5 +1,7 @@
 feeds:
   - name: HotNews Romania
     url: https://www.hotnews.ro/rss
-  - name: Reuters World
-    url: https://feeds.reuters.com/Reuters/worldNews
+  - name: BBC World
+    url: http://newsrss.bbc.co.uk/rss/newsonline_uk_edition/world/rss.xml
+  - name: BBC Business
+    url: http://newsrss.bbc.co.uk/rss/newsonline_uk_edition/business/rss.xml
