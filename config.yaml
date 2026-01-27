@@ -1,42 +1,61 @@
 settings:
-  items_per_feed: 10          # câte intrări citește din fiecare feed
-  max_items_per_category: 12  # câte afișează în mesaj per categorie
+  items_per_feed: 15
+  max_items_per_section: 10
+  dedupe_threshold: 92
 
 filters:
-  # dacă un articol conține oricare dintre acestea -> se elimină
+  # EXCLUDE ABSOLUT TOT ce ține de morți / violență / accidente
   exclude_any:
+    # română
+    - mort
+    - moarte
+    - deced
+    - ucis
     - omor
     - crim
-    - ucis
-    - ucidere
     - asasin
-    - drog
-    - cocain
-    - heroin
-    - trafic
-    - dealer
+    - impuscat
+    - injunghiat
     - viol
-    - abuz
     - jaf
     - furt
     - talhar
     - arestat
-    - impuscat
-    - atac armat
-    - incendiu mortal
-    - accident mortal
-    - murder
+    - accident
+    - traged
+    - incendiu
+    - exploz
+    - victima
+    - ranit
+    - spitalizat
+    - doliu
+    - catastrof
+    - deces
+
+    # engleză
+    - dead
+    - death
+    - died
     - killed
+    - murder
     - homicide
-    - drugs
-    - cocaine
-    - heroin
-    - trafficking
-    - rape
-    - robbery
-    - arrested
     - shooting
     - stabbed
+    - crash
+    - accident
+    - tragedy
+    - explosion
+    - fire
+    - victims
+    - injured
+    - hospital
+    - arrest
+    - rape
+    - robbery
+    - violence
+    - attack
+    - war casualty
+    - killed in
 
 categories:
   politics:
@@ -53,6 +72,7 @@ categories:
       - referendum
       - nato
       - ue
+      - sanctiuni
       - election
       - government
       - parliament
@@ -61,6 +81,9 @@ categories:
       - coalition
       - opposition
       - sanctions
+      - foreign policy
+      - diplomacy
+      - summit
 
   economy:
     include_any:
@@ -79,10 +102,11 @@ categories:
       - preturi
       - salarii
       - somaj
+      - economie globala
       - budget
       - tax
       - inflation
-      - rate
+      - interest rate
       - central bank
       - gdp
       - deficit
@@ -90,30 +114,43 @@ categories:
       - stocks
       - oil
       - energy
+      - recession
+      - growth
 
-  science_health:
+  technology:
     include_any:
-      - sanatate
-      - spital
-      - medicina
-      - vaccin
-      - epidem
-      - stiinta
-      - cercetare
       - tehnologie
-      - health
-      - medicine
-      - vaccine
-      - outbreak
-      - science
-      - research
-      - technology
+      - digital
+      - inteligenta artificiala
       - ai
+      - automatizare
+      - software
+      - hardware
+      - cybersecurity
+      - securitate cibernetica
+      - cloud
+      - date
+      - startup
+      - inovatie
+      - tech
+      - artificial intelligence
+      - machine learning
+      - automation
+      - cybersecurity
+      - cloud computing
+      - data
+      - innovation
+      - startup
+      - semiconductors
+      - chips
 
 feeds:
-  - name: HotNews Romania
-    url: https://www.hotnews.ro/rss
-  - name: BBC World
-    url: http://newsrss.bbc.co.uk/rss/newsonline_uk_edition/world/rss.xml
-  - name: BBC Business
-    url: http://newsrss.bbc.co.uk/rss/newsonline_uk_edition/business/rss.xml
+  romania:
+    - name: HotNews
+      url: https://www.hotnews.ro/rss
+
+  world:
+    - name: BBC World
+      url: http://newsrss.bbc.co.uk/rss/newsonline_uk_edition/world/rss.xml
+    - name: BBC Business
+      url: http://newsrss.bbc.co.uk/rss/newsonline_uk_edition/business/rss.xml
