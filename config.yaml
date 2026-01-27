@@ -1,3 +1,115 @@
+settings:
+  items_per_feed: 10          # câte intrări citește din fiecare feed
+  max_items_per_category: 12  # câte afișează în mesaj per categorie
+
+filters:
+  # dacă un articol conține oricare dintre acestea -> se elimină
+  exclude_any:
+    - omor
+    - crim
+    - ucis
+    - ucidere
+    - asasin
+    - drog
+    - cocain
+    - heroin
+    - trafic
+    - dealer
+    - viol
+    - abuz
+    - jaf
+    - furt
+    - talhar
+    - arestat
+    - impuscat
+    - atac armat
+    - incendiu mortal
+    - accident mortal
+    - murder
+    - killed
+    - homicide
+    - drugs
+    - cocaine
+    - heroin
+    - trafficking
+    - rape
+    - robbery
+    - arrested
+    - shooting
+    - stabbed
+
+categories:
+  politics:
+    include_any:
+      - guvern
+      - parlament
+      - presedinte
+      - alegeri
+      - politica
+      - minister
+      - coalitie
+      - opozitie
+      - premier
+      - referendum
+      - nato
+      - ue
+      - election
+      - government
+      - parliament
+      - president
+      - minister
+      - coalition
+      - opposition
+      - sanctions
+
+  economy:
+    include_any:
+      - buget
+      - taxe
+      - fiscal
+      - inflatie
+      - dobanda
+      - bnr
+      - deficit
+      - pib
+      - investitii
+      - economie
+      - bursa
+      - energie
+      - preturi
+      - salarii
+      - somaj
+      - budget
+      - tax
+      - inflation
+      - rate
+      - central bank
+      - gdp
+      - deficit
+      - markets
+      - stocks
+      - oil
+      - energy
+
+  science_health:
+    include_any:
+      - sanatate
+      - spital
+      - medicina
+      - vaccin
+      - epidem
+      - stiinta
+      - cercetare
+      - tehnologie
+      - health
+      - medicine
+      - vaccine
+      - outbreak
+      - science
+      - research
+      - technology
+      - ai
+
 feeds:
   - name: HotNews Romania
     url: https://www.hotnews.ro/rss
