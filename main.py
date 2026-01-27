@@ -69,7 +69,7 @@ def send_telegram_html(text: str):
 
 
 def classify(title: str, summary: str, categories: dict) -> list[str]:
-    hay = f"{title} {summary}"
+    hay = f"{title} {summary} {link}"
     matched = []
     for cat, rule in (categories or {}).items():
         include_any = rule.get("include_any", [])
@@ -119,7 +119,7 @@ def main():
             if not title and not link:
                 continue
 
-            hay = f"{title} {summary}"
+            hay = f"{title} {summary} {link}"
 
             # 1) EXCLUDE: crime/droguri/etc.
             if exclude_any and any_kw_in(hay, exclude_any):
