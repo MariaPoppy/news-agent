@@ -102,35 +102,30 @@ def main():
         "world": {c: [] for c in selected},
     }
 
-    def process(region, feed):
-        for e in fetch(feed["url"], cfg["settings"]["items_per_feed"]):
-            title = (e.get("title") or "").strip()
-            summary = (e.get("summary") or "").strip()
-            link = (e.get("link") or "").strip()
+   def process(region, feed):
+    for e in fetch(feed["url"], cfg["settings"]["items_per_feed"]):
+        title = (e.get("title") or "").strip()
+        summary = (e.get("summary") or "").strip()
+        link = (e.get("link") or "").strip()
 
-            hay = f"{title} {summary} {link}"
+        hay = f"{title} {summary} {link}"
 
-            # FILTRU DUR anti-morți / violență
-            if any_kw_in(hay, exclude_any):
-                return
+        if any_kw_in(hay, exclude_any):
+            continue
 
-            if region == "romania" and not is_romanian(title):
-                return
+        if region == "romania" and not is_romanian(title):
+            continue
 
-            matched = classify(title, summary, categories)
-            matched &= set(selected)
+        matched = classify(title, summary, categories)
+        matched &= set(selected)
 
-            if not matched:
-                return
+        if not matched:
+            continue
 
-            item = {
-                "title": title,
-                "link": link,
-                "source": feed["name"],
-            }
+        item = {"title": title, "link": link, "source": feed["name"]}
+        for cat in matched:
+            buckets[region][cat].append(item)
 
-            for cat in matched:
-                buckets[region][cat].append(item)
 
     for f in feeds["romania"]:
         process("romania", f)
