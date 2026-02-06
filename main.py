@@ -6,10 +6,10 @@ import httpx
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from html import escape
-from rapidfuzz import fuzz
+from urllib.parse import urlsplit, urlunsplit
 
 BUCHAREST = ZoneInfo("Europe/Bucharest")
-TELEGRAM_MAX = 3800
+TELEGRAM_LIMIT = 3900  # safe under 4096
 
 
 def load_config():
@@ -17,60 +17,40 @@ def load_config():
         return yaml.safe_load(f)
 
 
-def fetch(feed_url, limit=15):
-    feed = feedparser.parse(feed_url)
-    return (getattr(feed, "entries", []) or [])[:limit]
+def normalize_text(text: str) -> str:
+    t = (text or "").lower()
+    t = re.sub(r"<[^>]+>", " ", t)
+    t = re.sub(r"\s+", " ", t).strip()
+    return t
 
 
-def norm(text: str) -> str:
-    text = (text or "").lower()
-    text = re.sub(r"<[^>]+>", " ", text)
-    text = re.sub(r"[^a-z0-9ăâîșț\- ]+", " ", text)
-    return re.sub(r"\s+", " ", text).strip()
-
-
-def any_kw_in(text: str, kws: list[str]) -> bool:
-    t = norm(text)
-    for k in kws or []:
-        kk = norm(k)
-        if kk and kk in t:
+def contains_any(text: str, keywords: list[str]) -> bool:
+    hay = normalize_text(text)
+    for k in keywords or []:
+        kk = normalize_text(k)
+        if kk and kk in hay:
             return True
     return False
 
 
-def classify(title: str, summary: str, categories: dict) -> set[str]:
-    hay = f"{title} {summary}"
-    matched = set()
-    for cat, rule in (categories or {}).items():
-        inc = rule.get("include_any", [])
-        if inc and any_kw_in(hay, inc):
-            matched.add(cat)
-    return matched
+def canonical_link(url: str) -> str:
+    """
+    Normalize link to improve dedupe:
+    - remove fragments
+    - keep scheme+netloc+path+query (query kept because sometimes it identifies article)
+    """
+    if not url:
+        return ""
+    parts = urlsplit(url.strip())
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, parts.query, ""))
 
 
-def is_romanian(title: str) -> bool:
-    t = (title or "").lower()
-    if any(c in t for c in "ăâîșț"):
-        return True
-    ro_words = [" și ", " în ", " la ", " pentru ", " din ", " cu ", " pe ", " despre "]
-    return any(w in f" {t} " for w in ro_words)
+def fetch_entries(feed_url: str, limit: int):
+    feed = feedparser.parse(feed_url)
+    return (getattr(feed, "entries", []) or [])[:limit]
 
 
-def dedupe(items: list[dict], threshold: int) -> list[dict]:
-    out = []
-    for it in items:
-        nt = norm(it["title"])
-        is_dup = False
-        for o in out:
-            if fuzz.token_set_ratio(nt, norm(o["title"])) >= threshold:
-                is_dup = True
-                break
-        if not is_dup:
-            out.append(it)
-    return out
-
-
-def send(text: str):
+def send_telegram_html(text: str):
     token = os.environ["TELEGRAM_BOT_TOKEN"]
     chat_id = os.environ["TELEGRAM_CHAT_ID"]
     url = f"https://api.telegram.org/bot{token}/sendMessage"
@@ -88,119 +68,111 @@ def send(text: str):
     r.raise_for_status()
 
 
-def split(text: str) -> list[str]:
-    parts, cur = [], ""
-    for line in text.split("\n"):
-        if len(cur) + len(line) + 1 > TELEGRAM_MAX:
-            if cur.strip():
-                parts.append(cur.rstrip())
-            cur = line + "\n"
-        else:
-            cur += line + "\n"
-    if cur.strip():
-        parts.append(cur.rstrip())
-    return parts
+def build_message(date_str: str, ro_items: list[dict], world_items: list[dict]) -> str:
+    msg = f"🗞️ <b>Daily Brief — {escape(date_str)}</b>\n\n"
 
+    msg += "🇷🇴 <b>România</b>\n"
+    if not ro_items:
+        msg += "• (nimic relevant după filtrare)\n"
+    else:
+        for it in ro_items:
+            title = escape(it["title"])
+            link = escape(it["link"])
+            src = escape(it["source"])
+            msg += f'• {title} — <a href="{link}">Citește</a> <i>({src})</i>\n'
 
-def render_item(it: dict) -> str:
-    title = escape(it.get("title") or "(fără titlu)")
-    link = escape(it.get("link") or "")
-    src = escape(it.get("source") or "")
-    if link:
-        return f'  - {title} — <a href="{link}">Citește</a> <i>({src})</i>'
-    return f"  - {title} <i>({src})</i>"
+    msg += "\n🌍 <b>Global</b>\n"
+    if not world_items:
+        msg += "• (nimic relevant după filtrare)\n"
+    else:
+        for it in world_items:
+            title = escape(it["title"])
+            link = escape(it["link"])
+            src = escape(it["source"])
+            msg += f'• {title} — <a href="{link}">Citește</a> <i>({src})</i>\n'
+
+    return msg.strip()
 
 
 def main():
     cfg = load_config()
 
     settings = cfg.get("settings", {})
-    items_per_feed = int(settings.get("items_per_feed", 15))
-    max_items_per_section = int(settings.get("max_items_per_section", 10))
-    dedupe_threshold = int(settings.get("dedupe_threshold", 92))
+    scan_per_feed = int(settings.get("scan_per_feed", 25))
+    romania_top = int(settings.get("romania_top", 10))
+    world_top = int(settings.get("world_top", 10))
+    max_total_items = int(settings.get("max_total_items", 18))
 
     exclude_any = cfg.get("filters", {}).get("exclude_any", [])
-    categories = cfg.get("categories", {})
+
     feeds = cfg.get("feeds", {})
+    ro_feeds = feeds.get("romania", [])
+    world_feeds = feeds.get("world", [])
 
-    selected = ["politics", "economy", "technology"]
+    # Collect + filter + dedupe
+    seen_links = set()
+    seen_titles = set()
 
-    buckets = {
-        "romania": {c: [] for c in selected},
-        "world": {c: [] for c in selected},
-    }
-
-    def process(region: str, feed: dict):
-        src = str(feed.get("name", "Unknown")).strip()
-        url = str(feed.get("url", "")).strip()
-        if not url:
-            return
-
-        for e in fetch(url, limit=items_per_feed):
-            title = (getattr(e, "title", "") or "").strip()
-            summary = (getattr(e, "summary", "") or "").strip()
-            link = (getattr(e, "link", "") or "").strip()
-
-            hay = f"{title} {summary} {link}"
-
-            # exclude deaths/violence etc.
-            if exclude_any and any_kw_in(hay, exclude_any):
+    def collect(feed_defs: list[dict]) -> list[dict]:
+        out = []
+        for fd in feed_defs:
+            name = str(fd.get("name", "Source")).strip()
+            url = str(fd.get("url", "")).strip()
+            if not url:
                 continue
 
-            # keep Romania clean (mostly RO)
-            if region == "romania" and title and not is_romanian(title):
-                continue
+            for e in fetch_entries(url, scan_per_feed):
+                title = (getattr(e, "title", "") or "").strip()
+                link = canonical_link(getattr(e, "link", "") or "")
+                summary = (getattr(e, "summary", "") or "").strip()
 
-            matched = classify(title, summary, categories) & set(selected)
-            if not matched:
-                continue
+                if not title or not link:
+                    continue
 
-            item = {"title": title, "link": link, "source": src}
-            for cat in matched:
-                buckets[region][cat].append(item)
+                hay = f"{title} {summary} {link}"
 
-    # collect
-    for fd in feeds.get("romania", []):
-        process("romania", fd)
-    for fd in feeds.get("world", []):
-        process("world", fd)
+                # Exclude deaths/crime/etc.
+                if contains_any(hay, exclude_any):
+                    continue
 
-    # dedupe + cap
-    for region in buckets:
-        for cat in buckets[region]:
-            buckets[region][cat] = dedupe(buckets[region][cat], dedupe_threshold)[:max_items_per_section]
+                # Dedupe: link + normalized title
+                nt = normalize_text(title)
+                if link in seen_links or nt in seen_titles:
+                    continue
 
-    today = datetime.now(BUCHAREST).strftime("%d %b %Y")
-    msg = f"🗞️ <b>Daily Brief — {escape(today)}</b>\n\n"
+                seen_links.add(link)
+                seen_titles.add(nt)
 
-    def render_region(region_key: str, label: str, emoji: str):
-        nonlocal msg
-        msg += f"{emoji} <b>{escape(label)}</b>\n"
+                out.append({"title": title, "link": link, "source": name})
+        return out
 
-        any_region = False
-        order = [
-            ("politics", "🏛️ Politică"),
-            ("economy", "📈 Economie"),
-            ("technology", "🧠 Tehnologie & Inovație"),
-        ]
+    ro_items = collect(ro_feeds)
+    world_items = collect(world_feeds)
 
-        for cat, cat_label in order:
-            items = buckets[region_key][cat]
-            if not items:
-                continue
-            any_region = True
-            msg += f"• <b>{escape(cat_label)}</b>\n"
-            msg += "\n".join(render_item(it) for it in items)
-            msg += "\n\n"
+    # Limit per section + total (one message)
+    ro_items = ro_items[:romania_top]
+    world_items = world_items[:world_top]
 
-        if not any_region:
-            msg += "• (nimic relevant după filtrare)\n\n"
+    # Cap total items so message stays compact
+    combined = ro_items + world_items
+    if len(combined) > max_total_items:
+        combined = combined[:max_total_items]
+        ro_items = [x for x in combined if x in ro_items]
+        world_items = [x for x in combined if x in world_items]
 
-    render_region("romania", "România", "🇷🇴")
-    render_region("world", "Global", "🌍")
+    date_str = datetime.now(BUCHAREST).strftime("%d %b %Y")
+    msg = build_message(date_str, ro_items, world_items)
 
-    for part in split(msg):
-        send(part)
+    # If still too long, shrink items until it fits (keeps one message)
+    while len(msg) > TELEGRAM_LIMIT and (ro_items or world_items):
+        # remove one from the bigger section
+        if len(world_items) >= len(ro_items) and world_items:
+            world_items = world_items[:-1]
+        elif ro_items:
+            ro_items = ro_items[:-1]
+        msg = build_message(date_str, ro_items, world_items)
+
+    send_telegram_html(msg)
 
 
 if __name__ == "__main__":
