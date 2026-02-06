@@ -1,15 +1,17 @@
 settings:
-  items_per_feed: 15
-  max_items_per_section: 10
-  dedupe_threshold: 92
+  romania_top: 10
+  world_top: 10
+  max_total_items: 18          # ca să rămână mesajul scurt
+  scan_per_feed: 25            # câte intrări citește din fiecare feed
 
 filters:
-  # EXCLUDE ABSOLUT TOT ce ține de morți / violență / accidente
+  # dacă apare oricare -> exclude articolul (titlu + rezumat + link)
   exclude_any:
-    # română
+    # RO: moarte/violenta/crime
     - mort
     - moarte
     - deced
+    - deces
     - ucis
     - omor
     - crim
@@ -25,14 +27,12 @@ filters:
     - traged
     - incendiu
     - exploz
-    - victima
     - ranit
+    - victima
     - spitalizat
-    - doliu
-    - catastrof
-    - deces
+    - cadavru
 
-    # engleză
+    # EN: death/violence/crime
     - dead
     - death
     - died
@@ -41,6 +41,9 @@ filters:
     - homicide
     - shooting
     - stabbed
+    - rape
+    - robbery
+    - arrested
     - crash
     - accident
     - tragedy
@@ -49,101 +52,10 @@ filters:
     - victims
     - injured
     - hospital
-    - arrest
-    - rape
-    - robbery
-    - violence
+    - assault
     - attack
-    - war casualty
-    - killed in
 
-categories:
-  politics:
-    include_any:
-      - guvern
-      - parlament
-      - presedinte
-      - alegeri
-      - politica
-      - minister
-      - coalitie
-      - opozitie
-      - premier
-      - referendum
-      - nato
-      - ue
-      - sanctiuni
-      - election
-      - government
-      - parliament
-      - president
-      - minister
-      - coalition
-      - opposition
-      - sanctions
-      - foreign policy
-      - diplomacy
-      - summit
-
-  economy:
-    include_any:
-      - buget
-      - taxe
-      - fiscal
-      - inflatie
-      - dobanda
-      - bnr
-      - deficit
-      - pib
-      - investitii
-      - economie
-      - bursa
-      - energie
-      - preturi
-      - salarii
-      - somaj
-      - economie globala
-      - budget
-      - tax
-      - inflation
-      - interest rate
-      - central bank
-      - gdp
-      - deficit
-      - markets
-      - stocks
-      - oil
-      - energy
-      - recession
-      - growth
-
-  technology:
-    include_any:
-      - tehnologie
-      - digital
-      - inteligenta artificiala
-      - ai
-      - automatizare
-      - software
-      - hardware
-      - cybersecurity
-      - securitate cibernetica
-      - cloud
-      - date
-      - startup
-      - inovatie
-      - tech
-      - artificial intelligence
-      - machine learning
-      - automation
-      - cybersecurity
-      - cloud computing
-      - data
-      - innovation
-      - startup
-      - semiconductors
-      - chips
-
+# Surse: separăm România vs Global (ca să nu fie amestec)
 feeds:
   romania:
     - name: HotNews
